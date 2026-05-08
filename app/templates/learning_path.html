@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learning Path - CVMatchMaker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- Navigation -->
+<div class="navbar">
+  <a href="{{ url_for('index') }}" class="logo">CVMatchMaker</a>
+  <div>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('history') }}">History</a>
+    <a href="{{ url_for('learning_path') }}" class="active">Learning Path</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <h2 style="margin-bottom:5px;">My Learning Path</h2>
+  <p class="text-grey text-sm mb">Track the skills you need to learn. Check them off as you go.</p>
+
+  <!-- Progress Stats -->
+  {% if total > 0 %}
+  <div class="card">
+    <div class="row" style="text-align:center;">
+      <div class="col">
+        <div style="font-size:36px; font-weight:800; color:#22c55e;">{{ total }}</div>
+        <div class="text-grey text-sm">Total Skills</div>
+      </div>
+      <div class="col">
+        <div style="font-size:36px; font-weight:800; color:#22c55e;">{{ done }}</div>
+        <div class="text-grey text-sm">Completed</div>
+      </div>
+      <div class="col">
+        <div style="font-size:36px; font-weight:800; color:#22c55e;">{{ total - done }}</div>
+        <div class="text-grey text-sm">Remaining</div>
+      </div>
+    </div>
+    <div class="mt">
+      <div class="text-sm"><strong>Progress: {{ ((done / total) * 100)|round|int }}%</strong></div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:{{ ((done / total) * 100)|round|int }}%;"></div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <!-- Skills List -->
+  <div class="card">
+    {% if goals %}
+
+      <!-- Pending Skills -->
+      {% set pending = goals|selectattr('completed', 'false')|list %}
+      {% if pending %}
+      <h4 style="margin-bottom:10px;">Skills to Learn ({{ pending|length }})</h4>
+      {% for goal in pending %}
+      <div class="goal-row">
+        <form method="POST" action="{{ url_for('toggle_learning_goal', goal_id=goal.id) }}" style="display:inline;">
+          <button type="submit" class="goal-btn" title="Mark done">○</button>
+        </form>
+        <div style="flex:1;">
+          <strong>{{ goal.skill|title }}</strong>
+          <br><span class="text-grey text-sm">Added {{ goal.created_at.strftime('%d %b %Y') }}</span>
+        </div>
+        <a class="res-link" href="https://www.youtube.com/results?search_query={{ goal.skill|urlencode }}+tutorial" target="_blank">YouTube</a>
+        <a class="res-link" href="https://www.coursera.org/search?query={{ goal.skill|urlencode }}" target="_blank">Coursera</a>
+        <form method="POST" action="{{ url_for('delete_learning_goal', goal_id=goal.id) }}" style="display:inline;">
+          <button type="submit" class="res-link" style="color:#c00; border-color:#fcc;" title="Remove">✕</button>
+        </form>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      <!-- Completed Skills -->
+      {% set completed = goals|selectattr('completed')|list %}
+      {% if completed %}
+      <h4 style="margin-top:20px; margin-bottom:10px; color:#22c55e;">Completed ({{ completed|length }})</h4>
+      {% for goal in completed %}
+      <div class="goal-row" style="opacity:0.5;">
+        <form method="POST" action="{{ url_for('toggle_learning_goal', goal_id=goal.id) }}" style="display:inline;">
+          <button type="submit" class="goal-btn done" title="Undo">✓</button>
+        </form>
+        <div style="flex:1;">
+          <strong style="text-decoration:line-through; color:#aaa;">{{ goal.skill|title }}</strong>
+        </div>
+        <form method="POST" action="{{ url_for('delete_learning_goal', goal_id=goal.id) }}" style="display:inline;">
+          <button type="submit" class="res-link" style="color:#c00; border-color:#fcc;">✕</button>
+        </form>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center" style="padding:40px;">
+      <h3 style="color:#555;">No skills added yet</h3>
+      <p class="text-grey text-sm mt">Run a CV analysis and click "Add to Learning Path" on any missing skill.</p>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-green mt">Analyse My CV</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<div class="footer">CVMatchMaker — Saif Ali Khan — University of Roehampton 2025</div>
+
+</body>
+</html>

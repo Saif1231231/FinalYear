@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.conda/
+env/
+venv/
+ENV/
+
+# Environment variables
+.env
+
+# Database
+app/cvmatchmaker.db
+*.db
+*.sqlite
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# User uploads
+app/uploads/*
+!app/uploads/.gitkeep
+
+# VS Code
+.vscode/
+
+# Project Templates & Scratch
+BSc Project Report Template_2025 (1).docx
+CVMatchMaker_Presentation.pptx
+scratch/
+docs/

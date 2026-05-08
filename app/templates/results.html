@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Results - CVMatchMaker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- Navigation -->
+<div class="navbar">
+  <a href="{{ url_for('index') }}" class="logo">CVMatchMaker</a>
+  <div>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('history') }}">History</a>
+    <a href="{{ url_for('learning_path') }}">Learning Path</a>
+    <a href="#" class="active">Results</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Header -->
+  <h2 style="margin-bottom:5px;">CV Analysis Results</h2>
+  <p class="text-grey text-sm">
+    <strong>{{ result.job_title }}</strong> {% if result.location %}({{ result.location }}){% endif %} |
+    File: {{ result.filename }} | {{ result.job_count }} jobs analysed
+  </p>
+  <div class="mt mb">
+    <a href="{{ url_for('cover_letter', session_id=sess.id) }}" class="btn btn-sm btn-outline">Cover Letter</a>
+    <a href="{{ url_for('export_report', session_id=sess.id) }}" class="btn btn-sm btn-black">Download Report</a>
+  </div>
+
+  <!-- Score Card -->
+  <div class="card">
+    <div class="row">
+      <div style="text-align:center; min-width:130px;">
+        <div class="score-big" id="scoreNum">0</div>
+        <div class="text-grey text-sm" style="font-weight:bold;">CAREER SCORE</div>
+      </div>
+      <div class="col">
+        <h3>{{ result.grade.split('—')[0].strip() if '—' in result.grade else result.grade }}</h3>
+        <p class="text-grey text-sm mb">{{ result.grade.split('—')[1].strip() if '—' in result.grade else '' }}</p>
+        <div class="text-sm"><strong>Skills Match: {{ result.skills_match_pct }}%</strong></div>
+        <div class="progress-bar"><div class="progress-fill" id="bar1" style="width:0%"></div></div>
+        <div class="text-sm"><strong>Experience Relevance: {{ result.exp_relevance_pct }}%</strong></div>
+        <div class="progress-bar"><div class="progress-fill" id="bar2" style="width:0%; background:#f59e0b;"></div></div>
+        <div class="text-sm"><strong>Format & Structure: {{ result.format_pct }}%</strong></div>
+        <div class="progress-bar"><div class="progress-fill" id="bar3" style="width:0%; background:#3b82f6;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Salary Insight -->
+  {% if result.salary_insight %}
+  <div class="card" style="background:#111; color:#fff; border:none;">
+    <p class="text-grey text-sm" style="font-weight:bold;">MARKET SALARY INSIGHT</p>
+    <div style="font-size:24px; font-weight:800;">
+      £{{ "{:,}".format(result.salary_insight.avg_min) }} — £{{ "{:,}".format(result.salary_insight.avg_max) }}
+    </div>
+    <p class="text-grey text-sm">Based on {{ result.salary_insight.count }} live listings</p>
+  </div>
+  {% endif %}
+
+  <!-- Skills Match -->
+  <div class="card">
+    <h3>Skills Match</h3>
+    <div class="row">
+      <div class="col">
+        <h4 style="color:#2e7d32;">Found on your CV ({{ result.matched|length }})</h4>
+        {% for skill in result.matched %}
+          <span class="chip chip-green">{{ skill|title }}</span>
+        {% else %}
+          <p class="text-grey text-sm">No matched skills found.</p>
+        {% endfor %}
+      </div>
+      <div class="col">
+        <h4 style="color:#c62828;">Missing Skills ({{ result.missing|length }})</h4>
+        {% for gap in result.missing %}
+          <span class="chip chip-red">{{ gap.skill|title }}</span>
+        {% else %}
+          <p class="text-green"><strong>No skill gaps found!</strong></p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Learn Missing Skills -->
+    {% if result.missing %}
+    <div class="mt">
+      <h4>Learn these skills:</h4>
+      {% for gap in result.missing[:6] %}
+      <div style="background:#fafafa; border:1px solid #eee; border-radius:8px; padding:12px; margin-top:10px;">
+        <strong>{{ gap.skill|title }}</strong>
+        <span class="badge badge-{{ gap.priority|lower }}">{{ gap.priority }}</span>
+        <br>
+        {% if gap.resources %}
+          {% for res in gap.resources[:2] %}
+            <a class="res-link" href="{{ res.url }}" target="_blank">{{ res.provider }}</a>
+          {% endfor %}
+        {% else %}
+          <a class="res-link" href="https://www.youtube.com/results?search_query={{ gap.skill|urlencode }}+tutorial" target="_blank">YouTube</a>
+        {% endif %}
+        <button class="res-link" style="background:#e8f5e9; color:#2e7d32; border-color:#a5d6a7;" data-skill="{{ gap.skill }}" onclick="addToPath(this)">+ Learning Path</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Skill Priority Chart -->
+  {% if result.missing %}
+  <div class="card">
+    <h3>Skill Priority Chart</h3>
+    <p class="text-grey text-sm mb">Missing skills ranked by how often employers ask for them.</p>
+    {% for gap in result.missing[:8] %}
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+      <div style="min-width:110px; text-align:right; font-weight:bold; font-size:13px;">{{ gap.skill|title }}</div>
+      <div style="flex:1; background:#eee; border-radius:6px; height:22px; overflow:hidden; position:relative;">
+        <div class="priority-bar" style="width:0%; height:100%; border-radius:6px; transition:width 1s;
+          background:{% if gap.priority == 'High' %}#c00{% elif gap.priority == 'Medium' %}#e65100{% else %}#999{% endif %};"
+          data-width="{{ gap.frequency }}"></div>
+        <span style="position:absolute; right:8px; top:2px; font-size:11px; font-weight:bold;">{{ gap.frequency }}%</span>
+      </div>
+      <span class="badge badge-{{ gap.priority|lower }}" style="min-width:55px; text-align:center;">{{ gap.priority }}</span>
+    </div>
+    {% endfor %}
+    <p class="text-grey text-sm mt">Percentage = how many job listings mention this skill.</p>
+  </div>
+  {% endif %}
+
+  <!-- CV Quality Review -->
+  {% if result.cv_review %}
+  {% set review = result.cv_review %}
+  <div class="card">
+    <h3>CV Quality Review — Grade: {{ review.grade }}</h3>
+    <div class="row">
+      <div class="col">
+        <h4>Checklist</h4>
+        {% for item in review.checklist %}
+        <p>{% if item.status == 'pass' %}✅{% elif item.status == 'warn' %}⚠️{% else %}❌{% endif %}
+        <strong>{{ item.label }}</strong> — {{ item.detail }}</p>
+        {% endfor %}
+      </div>
+      <div class="col">
+        <h4>Suggestions</h4>
+        {% if review.suggestions %}
+          {% for sug in review.suggestions %}
+            <div class="tip-box {{ sug.severity }}">
+              <strong>{{ sug.title }}</strong><br>
+              <span class="text-grey text-sm">{{ sug.body }}</span>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-green"><strong>Your CV looks great!</strong></p>
+        {% endif %}
+        {% for rec in result.recommendations %}
+          <div class="tip-box">
+            <strong>{{ rec.title }}</strong><br>
+            <span class="text-grey text-sm">{{ rec.body }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Alternative Job Titles -->
+  {% if result.alt_titles %}
+  <div class="card">
+    <h3>Alternative Career Matches</h3>
+    <p class="text-grey text-sm mb">Based on your skills, you could also apply for:</p>
+    {% for alt in result.alt_titles %}
+    <div style="border:1px solid {% if alt.is_current %}#22c55e{% else %}#eee{% endif %}; border-radius:8px; padding:12px; margin-bottom:8px; background:{% if alt.is_current %}#e8f5e9{% else %}#fafafa{% endif %};">
+      <strong>{{ alt.title }}</strong> — <span style="color:{% if alt.match_pct >= 60 %}#2e7d32{% elif alt.match_pct >= 40 %}#e65100{% else %}#c00{% endif %}; font-weight:bold;">{{ alt.match_pct }}% match</span>
+      {% if alt.is_current %} <span class="badge" style="background:#22c55e; color:#fff;">Current Search</span>{% endif %}
+      <br><span class="text-grey text-sm">Matched: {{ alt.matched_skills|length }} skills</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Interview Prep -->
+  {% if result.interview_prep %}
+  <div class="card">
+    <h3>Interview Preparation</h3>
+    {% for item in result.interview_prep %}
+    <div style="margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #f0f0f0;">
+      <p><strong>Q: {{ item.question }}</strong></p>
+      <div class="tip-box" style="margin-top:5px;">
+        <strong>Tip:</strong> {{ item.tip }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- LinkedIn Advice -->
+  {% if result.linkedin_advice %}
+  <div class="card">
+    <h3>LinkedIn Tips</h3>
+    {% for item in result.linkedin_advice %}
+    <p style="padding:8px 0; border-bottom:1px solid #f0f0f0;">
+      {% if item.status == 'pass' %}✅{% elif item.status == 'warn' %}⚠️{% else %}ℹ️{% endif %}
+      <strong>{{ item.label }}</strong> — {{ item.detail }}
+    </p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Top Matching Jobs -->
+  <div class="card">
+    <h3>Top Matching Jobs</h3>
+    <p class="text-grey text-sm mb">Real listings from Reed.co.uk</p>
+    {% for job in result.jobs[:3] %}
+    <div class="job-card">
+      <strong>{{ job.jobTitle }}</strong>
+      <span class="chip chip-green" style="font-weight:bold;">{{ job.match_pct }}% Match</span>
+      <br><span class="text-grey text-sm">{{ job.employerName }} | {{ job.locationName }}{% if job.minimumSalary %} | £{{ '{:,}'.format(job.minimumSalary|int) }}{% endif %}</span>
+      {% if job.jobUrl %}<br><a class="res-link mt" href="{{ job.jobUrl }}" target="_blank">View on Reed →</a>{% endif %}
+    </div>
+    {% else %}
+    <p class="text-grey">No jobs found.</p>
+    {% endfor %}
+  </div>
+
+  <!-- Actions -->
+  <div class="text-center mt">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-green">Analyse Another CV</a>
+    <a href="{{ url_for('learning_path') }}" class="btn btn-outline">Learning Path</a>
+    <a href="{{ url_for('history') }}" class="btn btn-outline">History</a>
+  </div>
+
+</div>
+
+<div class="footer">CVMatchMaker — Saif Ali Khan — University of Roehampton 2025</div>
+
+<!-- JavaScript for animations -->
+<script>
+// Animate score counter
+var target = {{ result.score }};
+var el = document.getElementById('scoreNum');
+var count = 0;
+var timer = setInterval(function() {
+  count += 2;
+  if (count >= target) { count = target; clearInterval(timer); }
+  el.textContent = count;
+}, 25);
+
+// Animate progress bars after 0.4 seconds
+setTimeout(function() {
+  document.getElementById('bar1').style.width = '{{ result.skills_match_pct }}%';
+  document.getElementById('bar2').style.width = '{{ result.exp_relevance_pct }}%';
+  document.getElementById('bar3').style.width = '{{ result.format_pct }}%';
+}, 400);
+
+// Animate priority chart bars
+var bars = document.querySelectorAll('.priority-bar');
+for (var i = 0; i < bars.length; i++) {
+  (function(bar, delay) {
+    setTimeout(function() {
+      bar.style.width = bar.getAttribute('data-width') + '%';
+    }, delay);
+  })(bars[i], 600 + i * 100);
+}
+
+// Add skill to learning path
+function addToPath(btn) {
+  var skill = btn.getAttribute('data-skill');
+  btn.disabled = true;
+  btn.textContent = '...';
+  fetch('/api/learning-path/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ skill: skill })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.status === 'added') {
+      btn.textContent = '✓ Added';
+      btn.style.background = '#22c55e';
+      btn.style.color = '#fff';
+    } else if (d.status === 'exists') {
+      btn.textContent = 'Already added';
+    } else {
+      btn.textContent = 'Error';
+      btn.disabled = false;
+    }
+  })
+  .catch(function() {
+    btn.textContent = 'Error';
+    btn.disabled = false;
+  });
+}
+</script>
+
+</body>
+</html>

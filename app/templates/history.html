@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>History - CVMatchMaker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- Navigation -->
+<div class="navbar">
+  <a href="{{ url_for('index') }}" class="logo">CVMatchMaker</a>
+  <div>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('history') }}" class="active">History</a>
+    <a href="{{ url_for('compare') }}">Compare</a>
+    <a href="{{ url_for('learning_path') }}">Learning Path</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <h2 style="margin-bottom:5px;">Analysis History</h2>
+  <p class="text-grey text-sm mb">All past CV analyses for {{ current_user.email }}</p>
+  <div class="mb">
+    <a href="{{ url_for('compare') }}" class="btn btn-sm btn-outline">Compare Analyses</a>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-green">+ New Analysis</a>
+  </div>
+
+  <!-- Score Trend Chart -->
+  {% if sessions|length > 1 %}
+  <div class="card">
+    <h3>Score Trend</h3>
+    <p class="text-grey text-sm">Track how your score changes over time</p>
+    <div class="chart-area" id="chartArea">
+      <div class="chart-line" style="top:25%;"></div>
+      <div class="chart-line" style="top:50%;"></div>
+      <div class="chart-line" style="top:75%;"></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- History Table -->
+  <div class="card">
+    {% if sessions %}
+    <table>
+      <tr>
+        <th>#</th><th>Job Role</th><th>Score</th><th>Date</th><th>Actions</th>
+      </tr>
+      {% for s in sessions %}
+      <tr>
+        <td class="text-grey">{{ loop.index }}</td>
+        <td><strong>{{ s.job_role }}</strong></td>
+        <td style="color:#22c55e; font-weight:bold;">{{ s.score }}/100</td>
+        <td class="text-grey text-sm">{{ s.created_at.strftime('%d %b %Y') }}</td>
+        <td>
+          <a href="{{ url_for('results', session_id=s.id) }}" class="btn btn-sm btn-black">View</a>
+          <a href="{{ url_for('export_report', session_id=s.id) }}" class="btn btn-sm btn-outline">Export</a>
+          <form method="POST" action="{{ url_for('delete_session', session_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Delete this analysis?');">
+            <button type="submit" class="btn btn-sm btn-red">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="text-center" style="padding:40px;">
+      <p class="text-grey">No analyses yet.</p>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-green mt">Upload Your First CV →</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<div class="footer">CVMatchMaker — Saif Ali Khan — University of Roehampton 2025</div>
+
+<!-- Chart Script -->
+<script>
+(function() {
+  var area = document.getElementById('chartArea');
+  if (!area) return;
+
+  // Fetch score data from API
+  fetch('/api/score-trend')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.length < 2) return;
+
+      var barWidth = 40;
+      var gap = Math.min(60, (area.clientWidth - 32) / data.length - barWidth);
+      if (gap < 10) gap = 10;
+
+      // Draw each bar
+      for (var i = 0; i < data.length; i++) {
+        (function(d, index) {
+          var barHeight = (d.score / 100) * 160;
+          var leftPos = 16 + index * (barWidth + gap);
+
+          // Create bar
+          var bar = document.createElement('div');
+          bar.className = 'chart-bar';
+          bar.style.left = leftPos + 'px';
+          bar.style.height = '0px';
+          bar.title = d.job_role + ': ' + d.score + '/100';
+
+          // Create date label
+          var label = document.createElement('div');
+          label.className = 'chart-label';
+          label.style.left = leftPos + 'px';
+          label.textContent = d.date_short;
+
+          area.appendChild(bar);
+          area.appendChild(label);
+
+          // Animate bar height
+          setTimeout(function() {
+            bar.style.height = barHeight + 'px';
+
+            // Add score label above bar
+            var scoreLabel = document.createElement('div');
+            scoreLabel.className = 'chart-score-label';
+            scoreLabel.style.left = leftPos + 'px';
+            scoreLabel.style.bottom = (barHeight + 20) + 'px';
+            scoreLabel.textContent = d.score;
+            area.appendChild(scoreLabel);
+          }, 100 + index * 150);
+        })(data[i], i);
+      }
+    });
+})();
+</script>
+
+</body>
+</html>

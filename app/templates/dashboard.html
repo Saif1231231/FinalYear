@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - CVMatchMaker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- Navigation -->
+<div class="navbar">
+  <a href="{{ url_for('index') }}" class="logo">CVMatchMaker</a>
+  <div>
+    <a href="{{ url_for('dashboard') }}" class="active">Dashboard</a>
+    <a href="{{ url_for('history') }}">History</a>
+    <a href="{{ url_for('learning_path') }}">Learning Path</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <h2 style="margin-bottom:5px;">Dashboard</h2>
+  <p class="text-grey text-sm mb">Upload your CV and select a job role to begin.</p>
+
+  <!-- Upload Form -->
+  <div class="card">
+    <h3>New Analysis</h3>
+    <form method="POST" action="{{ url_for('analyse') }}" enctype="multipart/form-data">
+      <div class="row">
+        <div class="col">
+          <label>Upload CV (PDF or DOCX)</label>
+          <input type="file" name="cv_file" accept=".pdf,.docx" required>
+        </div>
+        <div class="col">
+          <label>Target Job Title</label>
+          <input type="text" name="job_title" placeholder="e.g. Software Engineer" required>
+          <label>Location (optional)</label>
+          <input type="text" name="location" placeholder="e.g. London">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-black">Analyse My CV →</button>
+    </form>
+  </div>
+
+  <!-- Recent Analyses -->
+  {% if history %}
+  <div class="card">
+    <h3>Recent Analyses</h3>
+    <table>
+      <tr><th>Job Role</th><th>Score</th><th>Date</th><th></th></tr>
+      {% for s in history %}
+      <tr>
+        <td><strong>{{ s.job_role }}</strong></td>
+        <td style="color:#22c55e; font-weight:bold;">{{ s.score }}/100</td>
+        <td class="text-grey text-sm">{{ s.created_at.strftime('%d %b %Y') }}</td>
+        <td><a href="{{ url_for('results', session_id=s.id) }}" class="btn btn-sm btn-outline">View</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+    <a href="{{ url_for('history') }}" class="btn btn-sm btn-outline mt">View All →</a>
+  </div>
+  {% endif %}
+
+</div>
+
+<div class="footer">CVMatchMaker — Saif Ali Khan — University of Roehampton 2025</div>
+
+</body>
+</html>

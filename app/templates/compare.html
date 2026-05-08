@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compare - CVMatchMaker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- Navigation -->
+<div class="navbar">
+  <a href="{{ url_for('index') }}" class="logo">CVMatchMaker</a>
+  <div>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('history') }}">History</a>
+    <a href="{{ url_for('learning_path') }}">Learning Path</a>
+    <a href="{{ url_for('compare') }}" class="active">Compare</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <h2 style="margin-bottom:5px;">Compare Analyses</h2>
+  <p class="text-grey text-sm mb">Pick two analyses to compare side by side.</p>
+
+  <!-- Selection Form -->
+  <div class="card">
+    <form method="GET" action="{{ url_for('compare') }}">
+      <div class="row">
+        <div class="col">
+          <label style="color:#2e7d32;">Analysis A (Before)</label>
+          <select name="a" required>
+            <option value="">Select first...</option>
+            {% for s in sessions %}
+            <option value="{{ s.id }}" {% if sess_a and s.id == sess_a.id %}selected{% endif %}>
+              {{ s.job_role }} — {{ s.score }}/100 ({{ s.created_at.strftime('%d %b %Y') }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col">
+          <label style="color:#1565c0;">Analysis B (After)</label>
+          <select name="b" required>
+            <option value="">Select second...</option>
+            {% for s in sessions %}
+            <option value="{{ s.id }}" {% if sess_b and s.id == sess_b.id %}selected{% endif %}>
+              {{ s.job_role }} — {{ s.score }}/100 ({{ s.created_at.strftime('%d %b %Y') }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-black mt">Compare →</button>
+    </form>
+  </div>
+
+  <!-- Results -->
+  {% if result_a and result_b %}
+
+  <!-- Score Comparison -->
+  <div class="compare-box">
+    <div class="compare-a text-center">
+      <div style="font-size:50px; font-weight:800; color:#22c55e;">{{ sess_a.score }}</div>
+      <div class="text-grey text-sm" style="font-weight:bold;">{{ sess_a.job_role }}</div>
+      <div class="text-grey text-sm">{{ sess_a.created_at.strftime('%d %b %Y') }}</div>
+    </div>
+    <div class="compare-vs">VS</div>
+    <div class="compare-b text-center">
+      <div style="font-size:50px; font-weight:800; color:#1565c0;">{{ sess_b.score }}</div>
+      <div class="text-grey text-sm" style="font-weight:bold;">{{ sess_b.job_role }}</div>
+      <div class="text-grey text-sm">{{ sess_b.created_at.strftime('%d %b %Y') }}</div>
+    </div>
+  </div>
+
+  <!-- Score Difference -->
+  {% set diff = sess_b.score - sess_a.score %}
+  <div class="card text-center">
+    <div class="text-grey text-sm" style="font-weight:bold;">Score Change</div>
+    <div style="font-size:32px; font-weight:800; color:{% if diff > 0 %}#22c55e{% elif diff < 0 %}#c00{% else %}#888{% endif %};">
+      {% if diff > 0 %}+{% endif %}{{ diff }} points
+    </div>
+    <div class="mt">
+      {% if diff > 0 %}
+        <span class="badge" style="background:#e8f5e9; color:#2e7d32; padding:4px 12px;">Improved ↑</span>
+      {% elif diff < 0 %}
+        <span class="badge" style="background:#ffebee; color:#c00; padding:4px 12px;">Decreased ↓</span>
+      {% else %}
+        <span class="badge" style="background:#eee; color:#888; padding:4px 12px;">No Change</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Details Side-by-Side -->
+  <div class="compare-box">
+    <div class="compare-a">
+      <h4 style="color:#2e7d32;">Analysis A</h4>
+      <p>Matched Skills: <strong>{{ result_a.matched|length }}</strong></p>
+      <p>Missing Skills: <strong>{{ result_a.missing|length }}</strong></p>
+      <p>Jobs Analysed: <strong>{{ result_a.job_count }}</strong></p>
+    </div>
+    <div class="compare-vs">⟷</div>
+    <div class="compare-b">
+      <h4 style="color:#1565c0;">Analysis B</h4>
+      <p>Matched Skills: <strong>{{ result_b.matched|length }}</strong></p>
+      <p>Missing Skills: <strong>{{ result_b.missing|length }}</strong></p>
+      <p>Jobs Analysed: <strong>{{ result_b.job_count }}</strong></p>
+    </div>
+  </div>
+
+  <!-- Skills Side-by-Side -->
+  <div class="compare-box">
+    <div class="compare-a">
+      <h4 style="color:#2e7d32;">Matched Skills (A)</h4>
+      {% for skill in result_a.matched %}
+        <span class="chip chip-green">{{ skill|title }}</span>
+      {% endfor %}
+    </div>
+    <div class="compare-vs">⟷</div>
+    <div class="compare-b">
+      <h4 style="color:#1565c0;">Matched Skills (B)</h4>
+      {% for skill in result_b.matched %}
+        <span class="chip" style="background:#e3f2fd; color:#1565c0; border:1px solid #90caf9;">{{ skill|title }}</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- New Skills Gained -->
+  {% set skills_a = result_a.matched | map('lower') | list %}
+  {% set new_skills = [] %}
+  {% for s in result_b.matched %}
+    {% if s|lower not in skills_a %}
+      {% if new_skills.append(s) %}{% endif %}
+    {% endif %}
+  {% endfor %}
+  {% if new_skills %}
+  <div class="card" style="border:2px solid #22c55e; background:#e8f5e9;">
+    <h3 style="color:#2e7d32;">New Skills Gained!</h3>
+    <p class="text-grey text-sm mb">These skills appeared in B but not in A:</p>
+    {% for skill in new_skills %}
+      <span class="chip chip-green" style="font-size:14px; padding:6px 16px;">{{ skill|title }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="text-center mt">
+    <a href="{{ url_for('results', session_id=sess_a.id) }}" class="btn btn-outline">View A</a>
+    <a href="{{ url_for('results', session_id=sess_b.id) }}" class="btn btn-outline">View B</a>
+    <a href="{{ url_for('history') }}" class="btn btn-black">Back to History</a>
+  </div>
+
+  {% elif sessions|length < 2 %}
+  <div class="card text-center" style="padding:40px;">
+    <h3 style="color:#555;">Need 2+ Analyses</h3>
+    <p class="text-grey text-sm mt">Run at least two analyses to compare them.</p>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-green mt">Analyse My CV →</a>
+  </div>
+
+  {% else %}
+  <div class="card text-center" style="padding:40px;">
+    <h3 style="color:#555;">Select Two Analyses Above</h3>
+    <p class="text-grey text-sm mt">Choose "Before" and "After" to see your improvement.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+<div class="footer">CVMatchMaker — Saif Ali Khan — University of Roehampton 2025</div>
+
+</body>
+</html>
