@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: cvmatchmaker
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd app && gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false   # paste your Neon/Postgres connection string in the Render dashboard
+      - key: REED_API_KEY
+        sync: false   # optional: without it the app uses sample job data

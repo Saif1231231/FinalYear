@@ -12,7 +12,7 @@ import sys
 import logging
 from datetime import datetime
 from flask import (Flask, render_template, request, redirect,
-                   url_for, flash, session, jsonify, Response)
+                   url_for, flash, session, jsonify, Response, abort)
 from flask_login import (LoginManager, login_user, logout_user,
                           login_required, current_user)
 
@@ -22,16 +22,45 @@ from flask_login import (LoginManager, login_user, logout_user,
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
+# Load variables from a local .env file if one exists (ignored in production)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(BASE_DIR, "..", ".env"))
+except ImportError:
+    pass
+
+
+def _database_url():
+    """Use DATABASE_URL (e.g. PostgreSQL in production), else a local SQLite file."""
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        return f"sqlite:///{os.path.join(BASE_DIR, 'cvmatchmaker.db')}"
+    # Some hosts still hand out the old 'postgres://' scheme, which SQLAlchemy rejects
+    # and SQLAlchemy 2.1 defaults to the psycopg3 driver, so name psycopg2 explicitly
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            url = "postgresql+psycopg2://" + url[len(prefix):]
+    return url
+
+
 # Create the Flask web application
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "cvmatchmaker-secret-key"  # Used to keep user sessions secure
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'cvmatchmaker.db')}"  # Path to our database file
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")  # Set SECRET_KEY in production
+app.config["SQLALCHEMY_DATABASE_URI"] = _database_url()
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}  # Recover from dropped DB connections
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # Turns off unnecessary tracking to save memory
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # Max file upload size = 5MB
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
 
 # Import our database models and connect them to the app
 from models import db, User, AnalysisSession, LearningGoal
 db.init_app(app)
+
+# Create tables on startup so the app also works under gunicorn (not just `python app.py`)
+with app.app_context():
+    db.create_all()
 
 # Set up Flask-Login to handle user sessions (who is logged in)
 login_manager = LoginManager(app)
@@ -45,6 +74,26 @@ logger = logging.getLogger(__name__)
 def load_user(user_id):
     """Flask-Login calls this to get the current user from the database."""
     return db.session.get(User, int(user_id))
+
+
+def get_owned_session_or_404(session_id):
+    """Return the analysis only if it belongs to the logged-in user, otherwise 404."""
+    sess = db.session.get(AnalysisSession, session_id)
+    if sess is None or sess.user_id != current_user.id:
+        abort(404)
+    return sess
+
+
+@app.errorhandler(413)
+def file_too_large(_error):
+    flash("That file is too large. The maximum size is 5MB.", "error")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/health")
+def health():
+    """Lightweight endpoint the hosting platform uses to check the app is up."""
+    return jsonify({"status": "ok"})
 
 # --- PAGE ROUTES (what happens when you visit each URL) ---
 
@@ -67,9 +116,7 @@ def dashboard():
 @login_required
 def results(session_id):
     """Show the full results of a specific CV analysis."""
-    sess = AnalysisSession.query.get_or_404(session_id)  # Find the analysis or show 404
-    if sess.user_id != current_user.id:  # Make sure the user owns this analysis
-        return redirect(url_for("dashboard"))
+    sess = get_owned_session_or_404(session_id)  # 404 unless this user owns it
     return render_template("results.html", result=sess.get_result(), sess=sess)
 
 @app.route("/history")
@@ -104,6 +151,9 @@ def signup():
     """Handle the signup form submission."""
     email = request.form.get("email", "").strip().lower()
     password = request.form.get("password", "")
+    if "@" not in email or len(password) < 8:
+        flash("Enter a valid email and a password of at least 8 characters", "error")
+        return redirect(url_for("index") + "#signup")
     if User.query.filter_by(email=email).first():  # Check if email already exists
         flash("Email already exists", "error")
         return redirect(url_for("index") + "#signup")
@@ -149,7 +199,10 @@ def analyse():
     # Step 1: Read the CV file and split it into sections
     file_bytes = file.read()
     extracted = extract_sections(file_bytes, file.filename)
-    
+    if not extracted["raw"].strip():
+        flash("We couldn't read any text from that file. Is it a scanned image?", "error")
+        return redirect(url_for("dashboard"))
+
     # Step 2: Get real job listings from Reed API
     jobs = fetch_jobs(job_title, location)
     
@@ -250,8 +303,8 @@ def delete_learning_goal(goal_id):
 @login_required
 def api_add_goal():
     """API endpoint: add a skill to learning path without refreshing the page."""
-    data = request.get_json()  # Read the JSON data sent by JavaScript
-    skill = data.get("skill")
+    data = request.get_json(silent=True) or {}  # Read the JSON data sent by JavaScript
+    skill = (data.get("skill") or "").strip()
     if not skill:
         return jsonify({"status": "error"}), 400
     
@@ -273,7 +326,7 @@ def api_add_goal():
 def cover_letter(session_id):
     """Show a generated cover letter based on the analysis results."""
     from logic.cover_letter_generator import generate_cover_letter
-    sess = db.session.get(AnalysisSession, session_id)
+    sess = get_owned_session_or_404(session_id)
     res = sess.get_result()
     # Generate the cover letter using matched and missing skills
     letter = generate_cover_letter(set(res['cv_keywords']), set(res['matched']), res['missing'], res['job_title'])
@@ -284,7 +337,7 @@ def cover_letter(session_id):
 def export_cover_letter(session_id):
     """Download the cover letter as a text file."""
     from logic.cover_letter_generator import generate_cover_letter
-    sess = db.session.get(AnalysisSession, session_id)
+    sess = get_owned_session_or_404(session_id)
     res = sess.get_result()
     letter = generate_cover_letter(set(res['cv_keywords']), set(res['matched']), res['missing'], res['job_title'])
     # Send as a downloadable text file
@@ -294,7 +347,7 @@ def export_cover_letter(session_id):
 @login_required
 def export_report(session_id):
     """Download the analysis results as a text report."""
-    sess = db.session.get(AnalysisSession, session_id)
+    sess = get_owned_session_or_404(session_id)
     res = sess.get_result()
     
     # Build a simple text report
@@ -340,6 +393,5 @@ def api_score_trend():
 
 # --- START THE SERVER ---
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()  # Create database tables if they don't exist yet
-    app.run(debug=True, port=5000)  # Start the server on port 5000
+    # Local development only; production runs under gunicorn (see Procfile / Dockerfile)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", port=int(os.environ.get("PORT", 5000)))
