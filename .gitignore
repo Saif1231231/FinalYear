@@ -37,3 +37,6 @@ BSc Project Report Template_2025 (1).docx
 CVMatchMaker_Presentation.pptx
 scratch/
 docs/
+
+# Tests
+.pytest_cache/

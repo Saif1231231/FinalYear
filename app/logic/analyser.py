@@ -70,6 +70,12 @@ def _build_job_skill_frequency(jobs):
 
 # --- MAIN ANALYSIS PROCESS ---
 
+def _skills_in(section_text):
+    """Skills mentioned in one CV section (reuses the section-aware extractor)."""
+    from .skill_extractor import extract_skills_weighted
+    return set(extract_skills_weighted({"OTHER": section_text}).keys()) if section_text else set()
+
+
 def analyse(cv_text, cv_sections, jobs, job_title, filename, location=""):
     """
     The main analysis pipeline — this runs when the user clicks 'Analyse'.
@@ -161,6 +167,16 @@ def analyse(cv_text, cv_sections, jobs, job_title, filename, location=""):
     from .interview_prep import generate_interview_questions  # Creates interview questions
     from .linkedin_grader import grade_linkedin_profile  # LinkedIn optimisation tips
 
+    # Step 9: Sub-scores computed from the CV itself (no placeholders)
+    cv_review = review_cv(cv_text, cv_sections)
+    # Experience relevance: share of matched skills backed by real use (Experience/Projects/Certs),
+    # not just listed in a skills section or mentioned in passing
+    evidenced = {s for s in matched if any(
+        s in _skills_in(cv_sections.get(sec, "")) for sec in ("EXPERIENCE", "PROJECTS", "CERTIFICATIONS"))}
+    exp_relevance_pct = round(len(evidenced) / len(matched) * 100) if matched else 0
+    # Format & structure: share of CV quality checks that passed
+    format_pct = round(cv_review["pass_count"] / cv_review["total_checks"] * 100) if cv_review["total_checks"] else 0
+
     # Return everything the results page needs
     return {
         "filename": filename,
@@ -172,7 +188,7 @@ def analyse(cv_text, cv_sections, jobs, job_title, filename, location=""):
         "missing": missing_list,  # Skills the user needs
         "jobs": enriched_jobs,  # Job listings with match percentages
         "recommendations": recs,  # Actionable advice
-        "cv_review": review_cv(cv_text, cv_sections),  # CV quality check
+        "cv_review": cv_review,  # CV quality check
         "alt_titles": suggest_alternative_titles(cv_skills, job_title),  # Alternative job suggestions
         "salary_insight": _calculate_salary_insight(jobs),  # Average salary range
         "interview_prep": generate_interview_questions(job_title, missing_list),  # Interview questions
@@ -180,6 +196,6 @@ def analyse(cv_text, cv_sections, jobs, job_title, filename, location=""):
         "cv_keywords": [kw for kw, _ in cv_keywords],  # General keywords found on CV
         "job_count": len(jobs),  # How many jobs were analysed
         "skills_match_pct": score,  # Same as score (for the progress bar)
-        "exp_relevance_pct": 80,  # Placeholder for experience relevance
-        "format_pct": 90  # Placeholder for format quality
+        "exp_relevance_pct": exp_relevance_pct,  # Matched skills evidenced in experience/projects
+        "format_pct": format_pct  # CV quality checks passed
     }

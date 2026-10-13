@@ -121,5 +121,5 @@ def extract_sections(file_bytes, filename):
 
 def is_allowed_file(filename):
     """Check if the file is a type we can read."""
-    return filename.lower().endswith((".pdf", ".docx", ".doc"))
+    return filename.lower().endswith((".pdf", ".docx"))
 
