@@ -58,6 +58,10 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production
 from models import db, User, AnalysisSession, LearningGoal
 db.init_app(app)
 
+# Show skills with proper capitalisation in templates: {{ "node.js"|skill }} -> Node.js
+from logic.skills_data import display_skill
+app.jinja_env.filters["skill"] = display_skill
+
 # Create tables on startup so the app also works under gunicorn (not just `python app.py`)
 with app.app_context():
     db.create_all()
@@ -204,10 +208,11 @@ def analyse():
         return redirect(url_for("dashboard"))
 
     # Step 2: Get real job listings from Reed API
-    jobs = fetch_jobs(job_title, location)
+    jobs, job_source = fetch_jobs(job_title, location)
     
     # Step 3: Run the AI analysis (compare CV skills vs job skills)
     result = run_analysis(extracted["raw"], extracted["sections"], jobs, job_title, file.filename, location)
+    result["data_source"] = job_source  # "reed" (live) or "sample" (demo mode)
 
     # Step 4: Save the result to the database
     new_session = AnalysisSession(

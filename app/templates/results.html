@@ -26,8 +26,13 @@
   <h2 style="margin-bottom:5px;">CV Analysis Results</h2>
   <p class="text-grey text-sm">
     <strong>{{ result.job_title }}</strong> {% if result.location %}({{ result.location }}){% endif %} |
-    File: {{ result.filename }} | {{ result.job_count }} jobs analysed
+    File: {{ result.filename }} | {{ result.job_count }} {{ "job" if result.job_count == 1 else "jobs" }} analysed
   </p>
+  {% if result.data_source == "sample" %}
+  <p class="text-sm" style="background:#fff8e1; border:1px solid #ffe082; color:#7a5b00; padding:8px 12px; border-radius:6px;">
+    Demo mode: this analysis used built-in sample listings, not live jobs. Live Reed.co.uk data is used when a Reed API key is configured.
+  </p>
+  {% endif %}
   <div class="mt mb">
     <a href="{{ url_for('cover_letter', session_id=sess.id) }}" class="btn btn-sm btn-outline">Cover Letter</a>
     <a href="{{ url_for('export_report', session_id=sess.id) }}" class="btn btn-sm btn-black">Download Report</a>
@@ -60,7 +65,7 @@
     <div style="font-size:24px; font-weight:800;">
       £{{ "{:,}".format(result.salary_insight.avg_min) }} — £{{ "{:,}".format(result.salary_insight.avg_max) }}
     </div>
-    <p class="text-grey text-sm">Based on {{ result.salary_insight.count }} live listings</p>
+    <p class="text-grey text-sm">Based on {{ result.salary_insight.count }} {{ "sample" if result.data_source == "sample" else "live" }} {{ "listing" if result.salary_insight.count == 1 else "listings" }}</p>
   </div>
   {% endif %}
 
@@ -71,7 +76,7 @@
       <div class="col">
         <h4 style="color:#2e7d32;">Found on your CV ({{ result.matched|length }})</h4>
         {% for skill in result.matched %}
-          <span class="chip chip-green">{{ skill|title }}</span>
+          <span class="chip chip-green">{{ skill|skill }}</span>
         {% else %}
           <p class="text-grey text-sm">No matched skills found.</p>
         {% endfor %}
@@ -79,7 +84,7 @@
       <div class="col">
         <h4 style="color:#c62828;">Missing Skills ({{ result.missing|length }})</h4>
         {% for gap in result.missing %}
-          <span class="chip chip-red">{{ gap.skill|title }}</span>
+          <span class="chip chip-red">{{ gap.skill|skill }}</span>
         {% else %}
           <p class="text-green"><strong>No skill gaps found!</strong></p>
         {% endfor %}
@@ -92,7 +97,7 @@
       <h4>Learn these skills:</h4>
       {% for gap in result.missing[:6] %}
       <div style="background:#fafafa; border:1px solid #eee; border-radius:8px; padding:12px; margin-top:10px;">
-        <strong>{{ gap.skill|title }}</strong>
+        <strong>{{ gap.skill|skill }}</strong>
         <span class="badge badge-{{ gap.priority|lower }}">{{ gap.priority }}</span>
         <br>
         {% if gap.resources %}
@@ -116,7 +121,7 @@
     <p class="text-grey text-sm mb">Missing skills ranked by how often employers ask for them.</p>
     {% for gap in result.missing[:8] %}
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-      <div style="min-width:110px; text-align:right; font-weight:bold; font-size:13px;">{{ gap.skill|title }}</div>
+      <div style="min-width:110px; text-align:right; font-weight:bold; font-size:13px;">{{ gap.skill|skill }}</div>
       <div style="flex:1; background:#eee; border-radius:6px; height:22px; overflow:hidden; position:relative;">
         <div class="priority-bar" style="width:0%; height:100%; border-radius:6px; transition:width 1s;
           background:{% if gap.priority == 'High' %}#c00{% elif gap.priority == 'Medium' %}#e65100{% else %}#999{% endif %};"
@@ -212,13 +217,13 @@
   <!-- Top Matching Jobs -->
   <div class="card">
     <h3>Top Matching Jobs</h3>
-    <p class="text-grey text-sm mb">Real listings from Reed.co.uk</p>
+    <p class="text-grey text-sm mb">{% if result.data_source == "sample" %}Sample listings (demo mode){% else %}Live listings from Reed.co.uk{% endif %}</p>
     {% for job in result.jobs[:3] %}
     <div class="job-card">
       <strong>{{ job.jobTitle }}</strong>
       <span class="chip chip-green" style="font-weight:bold;">{{ job.match_pct }}% Match</span>
       <br><span class="text-grey text-sm">{{ job.employerName }} | {{ job.locationName }}{% if job.minimumSalary %} | £{{ '{:,}'.format(job.minimumSalary|int) }}{% endif %}</span>
-      {% if job.jobUrl %}<br><a class="res-link mt" href="{{ job.jobUrl }}" target="_blank">View on Reed →</a>{% endif %}
+      {% if job.jobUrl %}<br><a class="res-link mt" href="{{ job.jobUrl }}" target="_blank" rel="noopener">View on Reed →</a>{% endif %}
     </div>
     {% else %}
     <p class="text-grey">No jobs found.</p>
@@ -234,7 +239,7 @@
 
 </div>
 
-<div class="footer">CVMatchMaker — Saif Ali Khan — University of Roehampton 2025</div>
+<div class="footer">CVMatchMaker — Saif Ali Khan — University of Roehampton 2026</div>
 
 <!-- JavaScript for animations -->
 <script>
