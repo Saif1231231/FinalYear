@@ -98,3 +98,12 @@ def test_learning_path_api(client):
     assert client.post("/api/learning-path/add", json={"skill": "docker"}).get_json()["status"] == "added"
     assert client.post("/api/learning-path/add", json={"skill": "docker"}).get_json()["status"] == "exists"
     assert client.post("/api/learning-path/add", json={}).status_code == 400
+
+
+def test_results_page_flags_sample_data(client, make_docx):
+    signup(client)
+    url = _analyse(client, make_docx).headers["Location"]
+    html = client.get(url).get_data(as_text=True)
+    assert "Demo mode" in html
+    assert "Real listings from Reed" not in html
+    assert "Sql" not in html and "Aws" not in html

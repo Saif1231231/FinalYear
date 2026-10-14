@@ -11,6 +11,7 @@ How it works:
 4. Calculate a score and generate recommendations
 """
 
+from .skills_data import display_skill
 import logging
 from typing import Dict, List, Set, Tuple
 
@@ -151,7 +152,7 @@ def analyse(cv_text, cv_sections, jobs, job_title, filename, location=""):
     # Step 7: Generate actionable recommendations
     recs = []
     if missing_list:
-        top = missing_list[0]["skill"].title()  # The most important missing skill
+        top = display_skill(missing_list[0]["skill"])  # The most important missing skill
         recs.append({
             "title": f"✏️ Add {top} to your CV",
             "body": f"This skill appears in {missing_list[0]['frequency']}% of jobs. Adding it to your skills section will help you pass ATS filters."

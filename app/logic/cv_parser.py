@@ -31,6 +31,15 @@ def _clean_text(text):
     cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
     return cleaned.strip()
 
+def _looks_like_heading(line):
+    """True for short, label-like lines such as 'TECHNICAL SKILLS' or 'Work Experience:'."""
+    if not line or len(line) > 40:
+        return False
+    if any(ch.isdigit() for ch in line) or any(sep in line for sep in ("|", ",", "•", "@")):
+        return False
+    return len(line.rstrip(":").split()) <= 4
+
+
 def _split_into_sections(text):
     """Try to figure out which part of the CV is the 'Skills' section, which is 'Experience', etc."""
     lines = text.split('\n')
@@ -42,11 +51,14 @@ def _split_into_sections(text):
         clean_line = line.strip()
         found_header = None
         
-        # Check if this line looks like a section heading
-        for name, pattern in SECTION_HEADERS.items():
-            if clean_line and len(clean_line) < 50 and pattern.search(clean_line):
-                found_header = name
-                break
+        # Check if this line looks like a section heading. Headings are short and
+        # contain no dates or separators, so a content line like
+        # "University of Roehampton, London" or "Sales Associate | 2023" isn't mistaken for one.
+        if _looks_like_heading(clean_line):
+            for name, pattern in SECTION_HEADERS.items():
+                if pattern.search(clean_line):
+                    found_header = name
+                    break
 
         if found_header:
             # Save the text from the previous section

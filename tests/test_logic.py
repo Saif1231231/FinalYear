@@ -34,3 +34,28 @@ def test_subscores_are_computed_not_hardcoded():
     assert strong["exp_relevance_pct"] == 100
     assert weak["exp_relevance_pct"] == 0
     assert 0 <= strong["format_pct"] <= 100
+
+
+def test_skill_display_names():
+    from logic.skills_data import display_skill
+    assert display_skill("sql") == "SQL"
+    assert display_skill("node.js") == "Node.js"
+    assert display_skill("c#") == "C#"
+    assert display_skill("machine learning") == "Machine Learning"
+
+
+def test_content_lines_are_not_treated_as_headings():
+    from logic.cv_parser import _split_into_sections
+    text = "EDUCATION\nBEng Software Engineering\nUniversity of Roehampton, London\nWORK EXPERIENCE\nSales Associate | 2023"
+    sections = _split_into_sections(text)
+    assert "University of Roehampton, London" in sections["EDUCATION"]
+    assert "Sales Associate" in sections["EXPERIENCE"]
+
+
+def test_sample_jobs_match_the_search_and_are_labelled():
+    from logic.job_fetcher import fetch_jobs, SOURCE_SAMPLE
+    jobs, source = fetch_jobs("Junior Backend Developer")
+    assert source == SOURCE_SAMPLE
+    assert len(jobs) >= 5
+    assert "Backend" in jobs[0]["jobTitle"]
+    assert all("jobUrl" not in j for j in jobs)  # no fake links to Reed

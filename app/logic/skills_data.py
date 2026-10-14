@@ -276,3 +276,35 @@ LEARNING_RESOURCES = {
         {"title": "Search YouTube Tutorials", "provider": "YouTube", "url": "https://www.youtube.com/results?search_query=", "type": "YouTube"},
     ]
 }
+
+
+# --- DISPLAY NAMES ---
+# Skills are stored in lowercase for matching. Python's .title() turns "sql" into
+# "Sql" and "node.js" into "Node.Js", so we keep the proper spelling here.
+DISPLAY_NAMES = {
+    "sql": "SQL", "mysql": "MySQL", "postgresql": "PostgreSQL", "sqlite": "SQLite",
+    "mongodb": "MongoDB", "nosql": "NoSQL", "mssql": "MS SQL Server", "mariadb": "MariaDB",
+    "dynamodb": "DynamoDB", "aws": "AWS", "gcp": "GCP", "ci/cd": "CI/CD",
+    "html": "HTML", "html5": "HTML5", "css": "CSS", "css3": "CSS3", "sass": "Sass",
+    "javascript": "JavaScript", "typescript": "TypeScript", "php": "PHP",
+    "node.js": "Node.js", "next.js": "Next.js", "nuxt.js": "Nuxt.js", "vue.js": "Vue.js",
+    "nestjs": "NestJS", "asp.net": "ASP.NET", ".net": ".NET", "dotnet": ".NET",
+    "fastapi": "FastAPI", "graphql": "GraphQL", "rest": "REST", "restful": "RESTful",
+    "rest api": "REST API", "apis": "APIs", "jquery": "jQuery", "tailwindcss": "Tailwind CSS",
+    "github": "GitHub", "gitlab": "GitLab", "github actions": "GitHub Actions",
+    "gitlab ci": "GitLab CI", "c#": "C#", "c++": "C++", "r": "R", "matlab": "MATLAB",
+    "nlp": "NLP", "natural language processing": "Natural Language Processing",
+    "scikit-learn": "scikit-learn", "numpy": "NumPy", "pytorch": "PyTorch",
+    "tensorflow": "TensorFlow", "power bi": "Power BI", "ui/ux": "UI/UX", "ux": "UX", "ui": "UI",
+    "oop": "OOP", "object oriented": "Object-Oriented", "devops": "DevOps", "k8s": "K8s",
+    "ios": "iOS", "api": "API", "json": "JSON", "xml": "XML", "tdd": "TDD", "uml": "UML",
+    "spacy": "spaCy", "pandas": "pandas", "llm": "LLM", "ai": "AI", "ml": "ML",
+}
+
+
+def display_skill(skill):
+    """Return a skill name with its proper capitalisation, e.g. 'node.js' -> 'Node.js'."""
+    if not skill:
+        return skill
+    key = str(skill).lower()
+    return DISPLAY_NAMES.get(key, " ".join(w[:1].upper() + w[1:] for w in key.split(" ")))
