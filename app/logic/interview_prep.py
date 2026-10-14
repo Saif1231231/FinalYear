@@ -4,6 +4,8 @@
 # Generates a list of tailored interview questions based on the target job
 # role and the specific skills identified as "missing" from the user's CV.
 
+from .skills_data import display_skill
+
 def generate_interview_questions(job_title, missing_skills):
     """
     Returns a list of 5 tailored interview questions.
@@ -18,14 +20,14 @@ def generate_interview_questions(job_title, missing_skills):
 
     # 2. Technical Questions (Based on missing skills)
     if missing_skills:
-        top_missing = missing_skills[0]['skill'].title()
+        top_missing = display_skill(missing_skills[0]['skill'])
         questions.append({
             "question": f"How would you approach a project that requires deep knowledge of {top_missing}?",
             "tip": f"Be honest about your current level. Mention that you are proactively learning {top_missing} (as seen in your Learning Path!) and explain your methodology for picking up new tech."
         })
 
         if len(missing_skills) > 1:
-            second_missing = missing_skills[1]['skill'].title()
+            second_missing = display_skill(missing_skills[1]['skill'])
             questions.append({
                 "question": f"What are the key benefits of using {second_missing} over competing technologies in a production environment?",
                 "tip": "Explain the architectural advantages and why an organisation would choose it for scalability or performance."

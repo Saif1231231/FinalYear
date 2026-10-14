@@ -73,7 +73,7 @@
           <button type="submit" class="goal-btn" title="Mark done">○</button>
         </form>
         <div style="flex:1;">
-          <strong>{{ goal.skill|title }}</strong>
+          <strong>{{ goal.skill|skill }}</strong>
           <br><span class="text-grey text-sm">Added {{ goal.created_at.strftime('%d %b %Y') }}</span>
         </div>
         <a class="res-link" href="https://www.youtube.com/results?search_query={{ goal.skill|urlencode }}+tutorial" target="_blank">YouTube</a>
@@ -95,7 +95,7 @@
           <button type="submit" class="goal-btn done" title="Undo">✓</button>
         </form>
         <div style="flex:1;">
-          <strong style="text-decoration:line-through; color:#aaa;">{{ goal.skill|title }}</strong>
+          <strong style="text-decoration:line-through; color:#aaa;">{{ goal.skill|skill }}</strong>
         </div>
         <form method="POST" action="{{ url_for('delete_learning_goal', goal_id=goal.id) }}" style="display:inline;">
           <button type="submit" class="res-link" style="color:#c00; border-color:#fcc;">✕</button>
@@ -116,7 +116,7 @@
 
 </div>
 
-<div class="footer">CVMatchMaker — Saif Ali Khan — University of Roehampton 2025</div>
+<div class="footer">CVMatchMaker — Saif Ali Khan — University of Roehampton 2026</div>
 
 </body>
 </html>

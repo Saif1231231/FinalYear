@@ -6,6 +6,8 @@ It uses the job title they searched for and the skills found on their CV
 to suggest exactly what they should put on their LinkedIn page.
 """
 
+from .skills_data import display_skill
+
 def grade_linkedin_profile(job_title, matched_skills, missing_skills):
     """
     Returns a list of LinkedIn optimization tips to display on the results page.
@@ -14,7 +16,7 @@ def grade_linkedin_profile(job_title, matched_skills, missing_skills):
 
     # 1. Headline Tip
     # Takes the top 3 skills they have and suggests a headline.
-    top_matched = [s.title() for s in list(matched_skills)[:3]]
+    top_matched = [display_skill(s) for s in sorted(matched_skills)[:3]]
     tips.append({
         "label": "Headline Optimisation",
         "detail": f"Update your headline to: 'Aspiring {job_title} | Proficient in {', '.join(top_matched)}'",
@@ -23,7 +25,7 @@ def grade_linkedin_profile(job_title, matched_skills, missing_skills):
 
     # 2. About Section Keywords Tip
     # Suggests putting their top 5 skills in the About section.
-    about_keywords = [s.title() for s in list(matched_skills)[:5]]
+    about_keywords = [display_skill(s) for s in sorted(matched_skills)[:5]]
     tips.append({
         "label": "About Section Keywords",
         "detail": f"Ensure your 'About' section contains the keywords: {', '.join(about_keywords)}. This helps LinkedIn's internal search algorithm find you.",
@@ -33,7 +35,7 @@ def grade_linkedin_profile(job_title, matched_skills, missing_skills):
     # 3. Skills Section Tip
     # Reminds them to add their top missing skill to LinkedIn once they learn it.
     if missing_skills:
-        top_missing = missing_skills[0]['skill'].title()
+        top_missing = display_skill(missing_skills[0]['skill'])
         tips.append({
             "label": "Skills & Endorsements",
             "detail": f"Add {top_missing} to your skills section. Once you complete the course on your Learning Path, ask a colleague for an endorsement.",

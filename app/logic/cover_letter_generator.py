@@ -4,6 +4,8 @@
 # Generates a professional cover letter draft based on the user's CV skills,
 # the target job title, and the key requirements found in job listings.
 
+from .skills_data import display_skill
+
 def generate_cover_letter(cv_skills, matched_skills, missing_skills, job_title, employer_name="Hiring Manager", location=""):
     """
     Generates a cover letter draft.
@@ -18,9 +20,9 @@ def generate_cover_letter(cv_skills, matched_skills, missing_skills, job_title, 
     ]
 
     # Matched skills section
-    skills_list = [s.title() for s in list(matched_skills)[:4]]
+    skills_list = [display_skill(s) for s in sorted(matched_skills)[:4]]
     if not skills_list:
-        skills_list = [s.title() for s in list(cv_skills)[:4]]
+        skills_list = [display_skill(s) for s in sorted(cv_skills)[:4]]
 
     skills_sentence = ""
     if skills_list:
@@ -47,7 +49,7 @@ def generate_cover_letter(cv_skills, matched_skills, missing_skills, job_title, 
         "",
         experience_para,
         "",
-        "I am particularly drawn to this opportunity because of the innovative work being done in the field. I am a fast learner and am already working on expanding my skillset, including learning " + (missing_skills[0]['skill'].title() if missing_skills else "new industry-standard tools") + ", to ensure I can hit the ground running.",
+        "I am particularly drawn to this opportunity because of the innovative work being done in the field. I am a fast learner and am already working on expanding my skillset, including learning " + (display_skill(missing_skills[0]['skill']) if missing_skills else "new industry-standard tools") + ", to ensure I can hit the ground running.",
         "",
         random.choice(closings),
         "",
